@@ -1,0 +1,243 @@
+ANSIBLE :
+=======
+
+* ansible is agentless tool. No agent is required to connect ansible with other remote server.
+* ansible consists of inventory, API, modules and plugins.
+    -> Inventory is nothing but where we give IP address of the other servers where necessary softwares and tools needs to be installed. 
+        Cd /etc/ansible/hosts (inventory file)
+* Ansible playbook is nothing but a group of modules where we write the logic and automate to install softwares or tools on the dedicated servers. It is simple to write and easy to maintain.
+     -> playbooks contain plays
+     -> plays contain tasks.
+     -> tasks call modules.
+
+
+
+ INVENTORY FILE :
+----------------
+
+www.example.com 
+
+
+[web servers]
+10.0.0.0/24
+10.1.0.0/24
+
+
+[Db servers]
+198.168.128.0/32
+198.168.128.1/32 
+
+Ansible Installation :
+---------------------
+
+sudo apt-add-repository ppa:ansible/ansible
+
+sudo apt update
+
+sudo apt install ansible
+
+#now go into the main ansible server and create a key
+
+Ssh-keygen 
+
+#now use command ls -a and go into .ssh directory and copy the id_rsa.pub key 
+#now go to the other remote server and paste this key in cd .ssh/authorized key and use the below command to restart.
+
+Systemctl restart sshd
+
+#repeat the same with all the other remote servers.
+#now copy paste the private IP address from the AWS and try to connect them using the below command.
+
+Ansible ping -m "Pri. IP address"
+
+Ansible ping -m all 
+
+#now we need to write the playbook in the main ansible server
+
+Play.yaml
+
+---
+  - name: play
+    hosts: webservers
+    become: yes
+    become_user: root
+    tasks:
+      - name: installing apache server on remote servers
+        yum:
+          name: apache2
+          state: latest
+      - name: ensure apache is running
+        Service:
+          name: apache2
+          service: started
+
+#to execute the .yaml file we need to use the below command
+
+Ansible-playbook play.yaml
+
+#copy module is used to copy files from ansible to remote server and fetch module is used to copy files from remote server to ansible server.
+
+Fetch.yaml 
+----------
+---
+  - hosts: 172.31.43.81
+    tasks:
+      - name: fetching files from remote server to Ansible
+        fetch:
+          src: /var/www/html/index.txt 
+          dest: /var/www/
+
+Copy.yaml
+---------
+---
+  - hosts: webservers
+    tasks:
+      - name: paste file from ansible to remote server 
+        copy:
+          src: /etc/ansible/new.txt
+          dest: /var/www/html/
+
+Ansible roles :
+-------------
+Through ansible role we can re-use the playbook again and again for different hosts.
+
+To create a role we use below command : 
+
+ansible-galaxy init devops
+
+The roles inside the directory are :
+
+Defaults : Contains the default variables that are going to be used by this role.
+
+Files : Contains files that can be deployed by this role.
+
+Handlers : Contains handlers which may be used by this role or even anywhere outside this role
+
+Meta : it contains files that establish role dependencies.
+
+Templates : 
+
+Tasks : Contains the main list of tasks that are to be executed by the role.
+
+Tests : 
+
+Vars : This directory consists of other variables that are going to be used by the role.
+
+mysql.yaml
+----------
+
+- name: install mysql db and create a user
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: install mysql and dependent packages
+      package: 
+        name: "{{item}}"
+        state: present
+        update_cache: yes
+      loop:
+        - mysql-server
+        - python3-mysqldb
+    - name: start mysql
+      service:
+        name: mysql    
+        state: started
+    - name: create a demo database
+      mysql_db:
+        name: abhidb
+        state: present
+    - name: create demo user with all privileges and grant
+      mysql_user:
+        name: abhi
+        password: abhi1234
+        priv: '*.*:ALL,GRANT'
+        state: present 
+
+
+#we have allowed the above code into the ansible roles. 
+
+Ansible-galaxy init devops
+
+Cd devops
+
+Defaults Files  handlers Meta Tasks Templates Tests vars
+
+Tasks :
+
+#here we will maintain total of 5 .yml files where all the other 4 files includes tasks and the main.yml file is used to call all these files in a order one by one.
+
+main.yml
+--------
+
+---
+# tasks file for devops
+
+- include: install_mysql.yml
+- include: start_mysql.yml
+- include: cred.yml
+- include: mysql_dbname.yml
+
+install_mysql.yml 
+-----------------
+
+---
+- name: installing mysql server and dependencies
+  package: 
+    name: "{{item}}"
+    state: present
+    update_cache: yes
+  loop:
+     - mysql-server
+     - mysql-client
+     - python3-mysqldb
+     - libmysqlclient-dev 
+
+start_mysql.yml
+---------------
+
+- name: start mysql
+  service:
+     name: mysql    
+     state: started
+
+Cred.yml
+--------
+
+- name: create demo user with all privileges and grant
+  mysql_user:
+    name: "{dbuser}"
+    password: "{dbpass}"
+    priv: '*.*:ALL'
+    state: present
+
+mysql_dbname.yml
+----------------
+
+- name: create a demo database
+   mysql_db:
+     name: "{dbname}"
+     state: present
+
+Vars:
+
+Main.yml
+
+dbuser: megha
+dbpass: megha1234
+dbname: meghadb
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
